@@ -1,0 +1,17 @@
+http:
+  port: "8081"
+  
+sfdc:
+  username: "francisco.tavares165@agentforce.com"
+  password: "Raioamarelo1"
+  token: "SLawKZu7dJ5RCpPZvNim3GGTe"
+ 
+file:
+  accountsDir: "C:/Users/francisco.tavares/Desktop/Training Files/CDEV-DEX401-EN-07Jun2024-Student-Files_SP/resources"
+  
+db:
+  host: "mudb.mule-training.com"
+  port: "3306"
+  user: "mule"
+  password: "mule"
+  database: "training"
