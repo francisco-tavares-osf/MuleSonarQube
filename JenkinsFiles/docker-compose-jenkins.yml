@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jenkins-sonar
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    networks:
+      - dev-net
+
+volumes:
+  jenkins_home:
+
+networks:
+  dev-net:
+    external: true
