@@ -5,8 +5,8 @@ import json
 ISSUES = []
 
 REQUIRED_FOLDERS = ['src/main/mule','src/test']
-REQUIRED_FILES = ['pom.xml','README.md']
-FILENAME_REGEX = r'^[a-z0-9]+(-[a-z0-9]+)\.xml' #kebab-case
+REQUIRED_FILES = ['pom.xml','README.md','olerei.xml']
+DEFAULT_FILE_PATH = "README.md"
 PROJECT_ROOT = os.getcwd() 
 PROJECT_NAME = os.path.basename(PROJECT_ROOT)
 
@@ -131,8 +131,25 @@ RULES = [
                 "severity": "HIGH"
             }
         ]
+    },
+    {  
+        "id": "missing-required-file",
+        "name": "Missing reequired files",
+        "description": "Ensure required files exist.",
+        "engineId": "custom-structure-check",            
+        "cleanCodeAttribute": "IDENTIFIABLE",
+        "type": "CODE_SMELL",
+        "severity": "MAJOR",
+        "impacts": [
+            {
+                "softwareQuality": "RELIABILITY",
+                "severity": "HIGH"
+            }
+        ]
     }
+
 ]
+
 
 
 def add_issue(file_path, line, message,rule_id):
@@ -147,6 +164,13 @@ def add_issue(file_path, line, message,rule_id):
             }
         }
     })
+
+# Ver esta solução, parece interessante. adicionar os files 
+def check_required_files():
+    for file in REQUIRED_FILES:
+        file_path = os.path.join(PROJECT_ROOT, file)
+        if not os.path.isfile(file_path):
+            add_issue(os.path.join(PROJECT_ROOT, DEFAULT_FILE_PATH), 1, f"Required file '{file}' not found, please check development standards.", "missing-required-file")
 
 #Rule 1 : Projeto deve estar em kebab-case com formato {project-identifier}-{context}-{name}-{layer}-{identifier}
 def check_project_name():
@@ -174,7 +198,7 @@ def check_dataweave_files():
             if file.endswith(".dwl"):
                 relative_path = os.path.relpath(root,PROJECT_ROOT).replace(os.sep,"/")
                 if relative_path.startswith("src/main/resources/modules"):
-                    if not re.match(r'^[a-z0-9]+(-[a-z0-9]+)*\.(yaml|yml)$',file):
+                    if not re.match(r'[A-Z][a-zA-Z0-9]+\.dwl$',file):
                         add_issue(os.path.join(root,file),1,f"DataWeave file '{file}' in modules must be in CamelCase","dataweave-modules-CamelCase")
                 else:
                     if not re.match(r'^[a-z0-9]+(-[a-z0-9]+)*\.dwl$',file):
@@ -196,16 +220,22 @@ def check_yaml_files():
 
 #Rule 5 : JSON Examples should be in kebab-case with a especific format
 def check_example_json():
-    base_dir = os.path.join(PROJECT_ROOT, "src","main","resources")
+    base_dir= PROJECT_ROOT
   #  if not os.path.isdir(base_dir):
    #     add_issue("src/main/resources",1,"Missing 'src/main/resources' directory for JSON files","resource-location")
-
     pattern=r'^(get|post|put|delete|patch)-[a-z0-9\-]+-(request|response)-example\.json$'
     #Iterates through all folders and subfolders from the /src/main/resources .
+    items = os.listdir(base_dir)
+    print("Conteúdo do diretório:")
+    for item in items:
+        print(item)
     for root,_,files in os.walk(base_dir):
+        
         #Iterates each file found in the directory
         for file in files:
+            print(f"FILE{file}")
             if file.endswith(".json"):
+                print(f"JSON FILE AQUI: {file}")          
                 if "example" in file and not re.match(pattern,file):
                     add_issue(os.path.join(root,file),1,f"Example JSON file '{file}' does not follow naming convention","json-example-format")
 
@@ -226,12 +256,13 @@ def check_main_raml():
 #Execution
 #check_project_name()
 #check_main_app_filename()
+check_required_files()
 check_dataweave_files()
 check_yaml_files()
 check_example_json()
 #check_main_raml() , this function might not be needed because usually api specification are directly imported from exchange
 
-output_file_path = '/var/jenkins_home/workspace/SonarPipeline/repo/sonar-structure-rules-issues.json'
+output_file_path = os.path.join(PROJECT_ROOT, 'sonar-structure-rules-issues.json')
 
 try:
     with open(output_file_path, "w", encoding="utf-8") as f:

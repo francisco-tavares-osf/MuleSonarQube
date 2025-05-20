@@ -65,14 +65,22 @@ pipeline {
                                     def projectName = "Mule-Sonar-${prNum}"
                                     def projectKey = generateProjectKey(projectName, prNum)
                                     
+
                                     echo "Processing PR #${prNum} (${prHash})"
 
                                     //Cria um branch para cada PR
                                     sh "git checkout -b ${branchName} ${prHash}" 
-                                    
-                                    
-                                    analyzeMuleProject(prNum, prHash, projectName, projectKey)
 
+                                    //Procura diretorios que tenham o src/main/resources para ser usado dinamicamente para analise
+                                    def sourceDirs = sh(script: "find /var/jenkins_home/workspace/SonarPipeline/repo -type d -path '*/src/main/resources' | paste -sd ',' -", returnStdout: true).trim()
+                                    // Verifica se encontrou algum diretório
+                                    if (sourceDirs) {
+                                        // Chama a função analyzeMuleProject com os diretórios encontrados
+                                        analyzeMuleProject(prNum, prHash, projectName,projectKey, sourceDirs)
+                                    } else {
+                                        echo "Nenhum diretório 'src/main/resources' encontrado para PR #${prNum}."
+                                    }
+                                 
                                     //Volta para branch principal
                                     sh "git checkout ${MAIN_BRANCH}"
                                     //Elimina o branch criado do PR
@@ -94,22 +102,44 @@ def generateProjectKey(projectName, prNum) {
     return "${SONAR_BASE_KEY}:${sanitizedName}:pr-${prNum}"
 }
 
-def analyzeMuleProject(prNum, prHash, projectName, projectKey) {
+def analyzeMuleProject(prNum, prHash, projectName, projectKey,sourceDirs) {
     stage("PR #${prNum} analysis") {
+        // Verifica o diretório de trabalho atual
+        sh 'echo "Current directory:"'
         sh 'pwd'
-        sh 'python3 /var/jenkins_home/my_script.py'
-        def jsonFilePath = '/var/jenkins_home/workspace/SonarPipeline/repo/sonar-structure-rules-issues.json'
-        sh 'c/var/jenkins_home/workspace/SonarPipeline/repo/sonar-structure-rules-issues.json'
+        
+        // Lista os arquivos e diretórios no diretório atual
+        sh 'echo "Listing current directory contents:"'
+        sh 'ls -lah'
+        
+        // Copia o script Python para o local desejado
+        sh 'mv /var/jenkins_home/my_script.py /var/jenkins_home/workspace/SonarPipeline/repo/training4-american-ws/src/main/resources/my_script.py'
+        
+        sh 'ls -lah'
+
+        // Executa o script Python
+        sh 'python3 /var/jenkins_home/workspace/SonarPipeline/repo/training4-american-ws/src/main/resources/my_script.py'
+
+        // Lista os arquivos e diretórios após a execução do script Python
+        sh 'echo "Listing directory contents after script execution:"'
+        sh 'ls -lah'
+        
+        // Remove o script Python após a execução
+        sh 'mv /var/jenkins_home/workspace/SonarPipeline/repo/training4-american-ws/src/main/resources/my_script.py /var/jenkins_home/my_script.py'
+        
         withSonarQubeEnv('SonarQube') {
             sh """
-                pwd 
-
+                echo "Current directory before sonar-scanner:"
+                pwd
+                
+                echo "Listing directory contents before sonar-scanner:"
+                ls -lah
+                
                 sonar-scanner \\
-                -Dsonar.projectKey=${projectKey} \\
-                -Dsonar.projectName=${projectName} \\
+                -Dsonar.projectKey=${projectKey}-plugin \\
+                -Dsonar.projectName=${projectName}-plugin \\
                 -Dsonar.projectVersion='PR-${prNum}' \\
                 -Dsonar.sources=. \\
-                -Dsonar.externalIssuesReportPaths=${jsonFilePath} \\
                 -Dsonar.host.url=${SONAR_HOST} \\
                 -Dsonar.login=${SONAR_TOKEN} \\
                 -Dsonar.sourceEncoding=UTF-8 \\
@@ -121,6 +151,39 @@ def analyzeMuleProject(prNum, prHash, projectName, projectKey) {
                 -X
             """
         }
+
+        withSonarQubeEnv('SonarQube') {
+
+            //  /var/jenkins_home/workspace/SonarPipeline/repo
+            sh """
+                echo "Current directory before sonar-scanner:"
+                pwd
+                
+                
+                echo "Listing directory contents before sonar-scanner:"
+                ls -lah
+                
+                sonar-scanner \\
+                -Dsonar.projectKey=${projectKey}-structure \\
+                -Dsonar.projectName=${projectName}-structure \\
+                -Dsonar.projectVersion='PR-${prNum}' \\
+                -Dsonar.sources=${sourceDirs} \\
+                -Dsonar.externalIssuesReportPaths=sonar-structure-rules-issues.json \\
+                -Dsonar.host.url=${SONAR_HOST} \\
+                -Dsonar.login=${SONAR_TOKEN} \\
+                -Dsonar.sourceEncoding=UTF-8 \\
+                -Dsonar.exclusions=target/**,**/*.jar \\
+                -Dsonar.modules.recalculateRoot=true \\
+                -Dsonar.mule.app=true \\
+                -Dsonar.language=mule \\
+                -Dsonar.verbose=true \\
+                -X
+
+                rm /var/jenkins_home/workspace/SonarPipeline/repo/sonar-structure-rules-issues.json
+            """
+        }
+
+
         
         stage('Quality Gate'){
             timeout(time: SONAR_TIMEOUT_MINUTES, unit: 'MINUTES') {
@@ -145,6 +208,8 @@ def analyzeMuleProject(prNum, prHash, projectName, projectKey) {
            "sonar_results": ${sonarResults}
         }
         """
+        echo "${sonarResults}"
+        
     /*
         timeout(time: MULESOFT_TIMEOUT, unit: 'SECONDS') {
             sh """
