@@ -248,10 +248,11 @@ def check_yaml_files():
                     
                 base_name = file.rsplit('.', 1)[0]
                 # Verifica se o arquivo '-secure.yaml' correspondente está presente
-                secure_file = f"{base_name}-secure.yaml"
-                if secure_file not in files_set:
-                    add_issue(os.path.join(root, file), 1, f"Missing '{secure_file}' in the same directory", "missing-required-file")
-
+                if not base_name.endswith('-secure'):
+                    secure_file = f"{base_name}-secure.yaml"
+                    if secure_file not in files_set:
+                        add_issue(os.path.join(root, file), 1, f"Missing '{secure_file}' in the same directory", "missing-required-file")
+                        
 # JSON Examples should be in kebab-case with a especific format
 def check_example_json():
     pattern=r'^(get|post|put|delete|patch)-[a-z0-9\-]+-(request|response)-example\.json$'

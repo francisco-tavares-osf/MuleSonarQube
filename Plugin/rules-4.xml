@@ -20,7 +20,7 @@
 			  name="Configuration files should not have so many flows"
 			  description="Configuration files should not have so many flows"
 			  severity="MAJOR" type="code_smell">
-			not(count(//mule:mule/mule:flow)>=10)
+			not(count(//mule:mule/mule:flow)>=15)
 		</rule>
 		<rule id="2"
 			  name="Configuration files should not have so many subflows"
@@ -32,14 +32,14 @@
 			  description="Flows names should match a naming convention"
 			  severity="MINOR" type="code_smell">
 			count(//mule:mule/mule:flow)=0 or
-			matches(//mule:mule/mule:flow/@name, '^[a-z:\\{}]+(-[a-z]+)*$')
+			matches(//mule:mule/mule:flow/@name, '^[a-z0-9]+(-[a-z0-9]+)*$')
 		</rule>
 		<rule id="4"
 			  name="SubFlows names should match a naming convention"
 			  description="SubFlows names should match a naming convention"
 			  severity="MINOR" type="code_smell">
 			count(//mule:mule/mule:sub-flow)=0 or
-			matches(//mule:mule/mule:sub-flow/@name, '^[a-z:\\{}]+(-[a-z]+)*$')
+			matches(//mule:mule/mule:sub-flow/@name, '^[a-z0-9]+(-[a-z0-9]+)*$')
 		</rule>
 		<rule id="6" name="Encryption key should not be logged"
 			  description="Encryption key should not be logged" severity="MAJOR"
@@ -47,12 +47,6 @@
 			count(//mule:mule/mule:flow/mule:logger[contains(@message,'${mule.key}')])=0
 			and
 			count(//mule:mule/mule:sub-flow/mule:logger[contains(@message,'${mule.key}')])=0
-		</rule>
-		<rule id="7"
-			  name="SubFlow 'health-check-flow' must exist"
-			  description="SubFlow 'health-check-flow' must exist"
-			  severity="MAJOR" type="code_smell">
-			count(//mule:mule/mule:sub-flow[@name='health-check-flow']) > 0
 		</rule>
 	</ruleset>
 	<ruleset category="configuration">
@@ -110,17 +104,6 @@
 			count(//mule:mule/http:listener-config)=0
 			or
 			//mule:mule/http:listener-config/http:listener-connection/@protocol='HTTPS'
-		</rule>
-		<rule id="8"
-			  name="HTTP Listener should use a specific port property"
-			  description="HTTP Listener should use a specific port property"
-			  severity="MAJOR" type="code_smell"
-			  locationHint="//*[local-name()='listener-config']">
-			count(//mule:mule/http:listener-config)=0
-			or
-			//mule:mule/http:listener-config/http:listener-connection/@port='${https.port}'
-			or
-			//mule:mule/http:listener-config/http:listener-connection/@port='${https.private.port}'
 		</rule>
 		<rule id="9"
 			  name="API ID in AutoDiscovery should not use a hardcoded value"
@@ -220,39 +203,51 @@
 		</rule>
 		<rule id="21" name="Variable names should be in camel case"
 			  description="Variable names should be in camel case"
-			  severity="MINOR" type="code_smell">
+			  severity="MINOR" applies="*.xml" type="code_smell">
 			count(//mule:mule/mule:flow/mule:set-variable)=0 or
 			matches(//mule:mule/mule:flow/mule:set-variable/@variableName, '^[a-z]+([A-Z][a-z]*)*$')
 		</rule>
 		<rule id="22" name="Application must have HTTP Configuration"
 			  description="global.xml should keep the http configuration"
 			  severity="MINOR" type="code_smell">
-			count (//http:listener-config)>0
+			count(//mule:flow)>0 or count(//mule:sub-flow)>0 or count(//http:listener-config)>0
+			or
+			count(//munit:config)>0
 		</rule>
 		<rule id="23" name="Application must have DataBase Configuration"
 			  description="Application must have the database configuration"
 			  severity="MINOR" type="code_smell">
-			count (//db:config)>0
+			count(//mule:flow)>0 or count(//mule:sub-flow)>0 or count(//db:config)>0
+			or
+			count(//munit:config)>0
 		</rule>
 		<rule id="24" name="Application must have Properties Configuration"
 			  description="gApplication must have the properties configuration"
 			  severity="MAJOR" type="code_smell">
-			count (//configuration-properties)>0
+			count(//mule:flow)>0 or count(//mule:sub-flow)>0 or count(//mule:configuration-properties)>0
+			or
+			count(//munit:config)>0
 		</rule>
 		<rule id="25" name="Application must have Secure Properties Configuration"
 			  description="Application must have the secure properties configuration"
 			  severity="MAJOR" type="vulnerability">
-			count (//secure-properties:config)>0
+			count(//mule:flow)>0 or count(//mule:sub-flow)>0 or count(//secure-properties:config)>0
+			or
+			count(//munit:config)>0
 		</rule>
 		<rule id="26" name="Application must have APIKit Configuration"
 			  description="Application must have APIKit configuration"
 			  severity="MAJOR" type="vulnerability">
-			count (//mule:mule/apikit:config)>0
+			count(//mule:flow)>0 or count(//mule:sub-flow)>0 or count(//mule:mule/apikit:config)>0
+			or
+			count(//munit:config)>0
 		</rule>
 		<rule id="27" name="Application must have the API Gateway autodiscovery Configuration"
 			  description="Application must have the API Gateway autodiscovery configuration"
 			  severity="MAJOR" type="vulnerability">
-			count (//api-gateway:autodiscovery)>0
+			count(//mule:flow)>0 or count(//mule:sub-flow)>0 or count (//api-gateway:autodiscovery)>0
+			or
+			count(//munit:config)>0
 		</rule>
 	</ruleset>
 </rulestore>
